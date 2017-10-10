@@ -1,0 +1,153 @@
+---
+title: "Project01"
+author: "Li Du"
+date: "October 5, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prepare the analysis
+
+```{r loadLibs}
+# Remember to install packages if they are not already installed
+library(corrplot)
+library(MASS)
+library(GGally)
+library(ggplot2)
+```
+
+A simple function was defined to classify and print out the level of correlation
+```{r classify}
+classify <- function(x) {
+  if (abs(x) >= 0.7) { lev = "strongly"}
+  else if (abs(x) >= 0.4 & abs(x) < 0.7) {lev = "moderately"}
+  else lev = "poorly"
+  
+  if (x > 0) {s = "positively"}
+  else s = "negatively"
+  sprintf("The median value of owner-occupied house and pupil-teacher ratio by town is %s and %s correlated", lev, s)
+}
+```
+
+A function was created to interpret the result of ANOVA test
+```{r ANOVAResult}
+ANOVARes <- function (x) {
+  alpha = 0.05 #significance level = 5%
+  if (x[[1]][["Pr(>F)"]][[1]] >= alpha) {
+    print("The median house values and the pupil-teacher ratios are independent")
+  }
+  else 
+    print("The median house values and the pupil-teacher ratios are NOT independent")
+}
+```
+
+
+Import the "Boston" dataset and perform brief cleaning
+```{r dataset}
+BosHousing <- Boston
+BosHousing_num <- BosHousing[,!(names(BosHousing) %in% "chas")] #Remove the variable "chas" since it is a boolean-type variable
+```
+
+
+## Explore and answer the SMART question 
+
+### correlation
+```{r correlation}
+correlation = cor(BosHousing_num$medv, BosHousing_num$ptratio)
+sprintf("The correlation coefficient is %f", correlation)
+classify(correlation)
+```
+
+### Scatter plot
+```{r scatterplot, echo=FALSE}
+ggplot(data=BosHousing, aes(x=ptratio, y=medv))+
+  geom_point(shape=1)+ 
+  geom_smooth(method=lm, se=FALSE) +
+               labs(y="Median House Value (in $1000)", x="Pupil-teacher ratio by town")
+```
+
+## One-way ANOVA test
+
+The dataset was divided into three parts based on the tertiles of "ptratio". Then, the median values of houses are extracted for the three groups. This new dataset MedV.aov will be used for the following ANOVA analysis.
+```{r Pre-ANOVA}
+nr <- nrow(BosHousing_num) #calculate the number of rows
+BosHousing_num <- BosHousing_num[order(BosHousing_num$ptratio),]# order the data frame by "ptratio"
+ptratio_lv <- c(rep("low",round(nr/3,0)),rep("mid",round(nr/3,0)),rep("hi",round((nr/3-1),0)))
+MedV.aov <- data.frame(BosHousing_num$ptratio,ptratio)
+colnames(MedV.aov) <- c("MedV", "ptratio")
+```
+
+Perform one-way ANOVA test
+```{r ANOVA}
+results <- aov(MedV~ptratio, data=MedV.aov)
+summary(results)
+
+ANOVARes(summary(results))
+```
+
+
+## Exploratory or general analysis of the whole datast
+
+We can discuss whether this is needed and where to fit them
+```{r TBD}
+#exploratory analysis
+corrplot(cor(BosHousing_num), type = "upper", is.corr = TRUE)
+ggpairs(BosHousing_num)
+
+#Whole dataset exploration
+
+
+summary(BosHousing$ptratio)
+summary(BosHousing$medv)
+
+#Outliers
+
+str(BosHousing) #All variables are integers or numeric
+
+colSums(is.na(BosHousing)) #No missing values
+
+# Applying Freedman/Diaconis rule p.120 ("Algorithm that chooses bin widths and locations automatically, based on the sample size and the spread of the data" 
+
+#Write function for plots, save each in directoy
+
+Bos_plots <- function(x,y) {
+  hist(x, breaks = "FD", col = y) #Add chart title
+  boxplot(x, col = "blue")
+}
+
+
+par(mfrow = c(1,2), lwd = 2)
+dotchart(BosHousing$ptratio, lcolor = 0)
+dotchart(sort(BosHousing$ptratio), lcolor = 0)
+
+# Do males and females have similar variance in Head size?
+boxplot(BosHousing$ptratio ~ BosHousing$medv)
+
+with(BosHousing, hist(BosHousing$ptratio, breaks="FD", col="green"))
+with(BosHousing, hist(BosHousing$medv, breaks="FD", col="blue"))
+with(BosHousing, boxplot(BosHousing$medv, breaks="FD", col="blue"))
+
+plot(BosHousing$medv, BosHousing$ptratio) #plot median house value against pupil-ratio
+
+scatterplot(ptratio~medv, id.method="identify", data=BosHousing)
+
+boxplot(BosHousing$ptratio)
+
+boxplot(BosHousing$medv)
+
+plot(BosHousing$medv)
+
+#Chi-square
+
+#Cramer's V
+
+#Fisher's exact
+
+```
+
+
+
+
